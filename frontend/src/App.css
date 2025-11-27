@@ -1,0 +1,19 @@
+.App {
+    min-height: 100vh;
+}
+
+.page-container {
+    padding-top: 80px;
+    min-height: 100vh;
+}
+
+.page-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Анимации страниц */
+.page-transition {
+    animation: fadeIn 0.3s ease-out;
+}
