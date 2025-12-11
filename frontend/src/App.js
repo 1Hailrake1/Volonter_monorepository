@@ -2,15 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ========================================
-// КОНФИГУРАЦИЯ API URL
-// ========================================
-// Для PRODUCTION (сервер) используйте: '/v1'
-// Для DEVELOPMENT (локально) используйте: 'http://localhost:8060/v1'
-
-const API_URL = '/v1';  // ← PRODUCTION (сервер)
-// const API_URL = 'http://localhost:8060/v1';  // ← DEVELOPMENT (локально)
-
 // Pages
 import PublicPage from './pages/PublicPage';
 import LoginPage from './pages/LoginPage';
@@ -28,6 +19,15 @@ import './App.css';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
+
+// ========================================
+// КОНФИГУРАЦИЯ API URL
+// ========================================
+// Для PRODUCTION (сервер) используйте: '/v1'
+// Для DEVELOPMENT (локально) используйте: 'http://localhost:8060/v1'
+
+const API_URL = '/v1';  // ← PRODUCTION (сервер)
+// const API_URL = 'http://localhost:8060/v1';  // ← DEVELOPMENT (локально)
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = React.useState(false);
