@@ -59,7 +59,7 @@ const AuthPage = ({ onLogin }) => {
         setError('');
         try {
             // Verify code
-            await authAPI.verifyCode(formData.email, code);
+            await authAPI.verifyCode(formData.email, parseInt(code, 10));
 
             // Register
             await authAPI.register({
@@ -87,7 +87,7 @@ const AuthPage = ({ onLogin }) => {
         setError('');
         try {
             // Verify code
-            await authAPI.verifyCode(formData.email, code);
+            await authAPI.verifyCode(formData.email, parseInt(code, 10));
 
             // Login
             await authAPI.login(formData.email, formData.password);

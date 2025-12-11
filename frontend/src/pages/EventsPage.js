@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiGrid, FiList, FiMapPin, FiCalendar, FiUsers, FiArrowRight, FiX } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { eventsAPI, publicAPI, applicationsAPI } from '../api/api';
+import { useNotification } from '../contexts/NotificationContext';
 import './EventsPage.css';
 
 const EventsPage = () => {
@@ -13,6 +14,10 @@ const EventsPage = () => {
     const [tags, setTags] = useState([]);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [applicationMessage, setApplicationMessage] = useState('');
+    const { notify } = useNotification();
+
+
+
     const [filters, setFilters] = useState({
         search: '',
         location: '',
@@ -72,13 +77,33 @@ const EventsPage = () => {
     const applyFilters = () => {
         let filtered = [...allEvents];
 
-        // Apply search filter
+        // Apply search filter (Title or Location)
         if (filters.search) {
             const searchLower = filters.search.toLowerCase();
             filtered = filtered.filter(event =>
                 event.title.toLowerCase().includes(searchLower) ||
                 event.location.toLowerCase().includes(searchLower)
             );
+        }
+
+        // Apply Location filter
+        if (filters.location) {
+            const locLower = filters.location.toLowerCase();
+            filtered = filtered.filter(event =>
+                event.location.toLowerCase().includes(locLower)
+            );
+        }
+
+        // Apply Tags filter
+        if (filters.tag_ids.length > 0) {
+            filtered = filtered.filter(event =>
+                event.tags && event.tags.some(tag => filters.tag_ids.includes(tag.id))
+            );
+        }
+
+        // Apply Status filter
+        if (filters.status) {
+            filtered = filtered.filter(event => event.status === filters.status);
         }
 
         setEvents(filtered);
@@ -115,12 +140,28 @@ const EventsPage = () => {
                 event_id: selectedEvent.id,
                 message: applicationMessage
             });
-            alert('Заявка успешно отправлена!');
+            notify('Заявка успешно отправлена!', 'success');
             setSelectedEvent(null);
             setApplicationMessage('');
         } catch (error) {
             console.error('Error applying:', error);
-            alert('Ошибка при отправке заявки');
+
+            let errorMessage = 'Ошибка при отправке заявки';
+
+            // BackendHandlers returns 'message' for AppExceptions and HTTPExceptions
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.data?.detail) {
+                const detail = error.response.data.detail;
+                if (Array.isArray(detail)) {
+                    errorMessage = detail.map(e => e.msg || JSON.stringify(e)).join('\n');
+                } else {
+                    errorMessage = detail;
+                }
+            }
+
+            console.error('Backend Error Payload:', error.response?.data);
+            notify(errorMessage, 'error');
         }
     };
 
@@ -151,6 +192,7 @@ const EventsPage = () => {
                             <FiList />
                         </button>
                     </div>
+
                 </motion.div>
 
                 <div className="events-layout">
@@ -321,6 +363,8 @@ const EventsPage = () => {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+
             </div>
         </div>
     );
