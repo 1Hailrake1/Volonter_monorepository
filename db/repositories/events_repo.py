@@ -212,7 +212,6 @@ class EventsRepo(BaseRepo):
                 **event.__dict__,
                 organizer=organizer_dto,
                 tags=tags_list,
-                tags=tags_list,
                 approved_volunteers_count=await self._count_approved_volunteers(event.id)
             ))
             
