@@ -2,10 +2,12 @@ from typing import List, Optional
 from datetime import datetime
 from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.services.services_factory import BaseService, register_services
+from db.repositories.roles_repo import RolesRepo
 from db.repositories.user_repo import UserRepo
 from db.repositories.events_repo import EventsRepo
 from db.repositories.applications_repo import ApplicationsRepo
-from models.pydantic_response_request_models.user_dto import UserListResponse
+from models.pydantic_response_request_models.role_dto import RoleRead
+from models.pydantic_response_request_models.user_dto import UserListResponse, UserCabinetInfo
 from models.pydantic_response_request_models.event_dto import EventStatus, EventFilters
 from models.pydantic_response_request_models.application_dto import ApplicationStatus
 
@@ -129,3 +131,36 @@ class AdminService(BaseService):
             pending_events = await events_repo.get_paginated_events(filters)
             await self.uow.commit()
             return pending_events
+
+
+    async def change_roles(self, user_id: int, new_roles: List[RoleRead]) -> UserCabinetInfo:
+        async with self.uow:
+            roles_repo: RolesRepo = self.uow.roles
+            user_repo: UserRepo = self.uow.users
+            
+            # 1. Получаем текущие роли
+            current_roles = await roles_repo.get_user_roles(user_id)
+            current_role_ids = {r.id for r in current_roles}
+            new_role_ids = {r.id for r in new_roles}
+
+            # 2. Вычисляем разницу
+            roles_to_add = new_role_ids - current_role_ids
+            roles_to_remove = current_role_ids - new_role_ids
+
+            # 3. Применяем изменения
+            for role_id in roles_to_add:
+                await roles_repo.add_role_to_user(user_id, role_id)
+                
+            for role_id in roles_to_remove:
+                await roles_repo.remove_role_from_user(user_id, role_id)
+
+            # 4. Возвращаем обновленного пользователя
+            new_user = await user_repo.get_user_cabinet_info(user_id)
+            await self.uow.commit()
+            
+        return new_user
+
+    async def get_all_roles(self):
+        async with self.uow:
+            roles_repo: RolesRepo = self.uow.roles
+            return await roles_repo.get_all_roles()

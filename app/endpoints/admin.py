@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from app.endpoints.authorization_methods.auth_user import verify_access_token_dependency
 from app.services.services_factory import Services, get_services
 from app.services.admin_service import AdminService
+from app.services.user_service import UserService
+from models.pydantic_response_request_models.role_dto import RoleRead
 from models.pydantic_response_request_models.user_dto import UserTokenInfo, UserListResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -94,3 +96,23 @@ async def get_pending_events(
     """Получает список мероприятий, ожидающих одобрения (только для админа)"""
     admin_service: AdminService = services.admin
     return await admin_service.get_pending_events(page, page_size)
+
+@router.post("/users/{user_id}/change_roles")
+async def change_roles(
+        user_id:int,
+        new_roles:list[RoleRead],
+        user: UserTokenInfo = Depends(verify_admin_role),
+        services: Services = Depends(get_services),
+):
+    admin_service: AdminService = services.admin
+    return await admin_service.change_roles(user_id, new_roles)
+
+
+@router.get("/roles")
+async def get_all_roles(
+    user: UserTokenInfo = Depends(verify_admin_role),
+    services: Services = Depends(get_services)
+):
+    """Получает список всех доступных ролей"""
+    admin_service: AdminService = services.admin
+    return await admin_service.get_all_roles()

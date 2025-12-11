@@ -86,23 +86,69 @@ class ApplicationsRepo(BaseRepo):
             # If filtering by volunteer, we likely want to see event details
             if filters.volunteer_id:
                 event = await self.session.get(Events, app.event_id)
-                # Need organizer for EventListItem
-                organizer = await self.session.get(Users, event.organizer_id)
-                organizer_dto = OrganizerRead.from_orm(organizer)
-                
-                event_dto = EventListItem(
-                    **event.__dict__,
-                    organizer=organizer_dto,
-                    tags=[], # Optimization: skip tags for this list view or fetch if needed
-                    approved_volunteers_count=0
-                )
-                apps_list.append(ApplicationWithEvent(**app.__dict__, event=event_dto))
+                if event:
+                    organizer = await self.session.get(Users, event.organizer_id)
+                    if organizer:
+                        organizer_dto = OrganizerRead(
+                            id=organizer.id,
+                            fullname=organizer.fullname,
+                            avatar_url=organizer.avatar_url
+                        )
+                        
+                        event_dto = EventListItem(
+                            id=event.id,
+                            title=event.title,
+                            location=event.location,
+                            start_date=event.start_date,
+                            end_date=event.end_date,
+                            required_volunteers=event.required_volunteers,
+                            status=event.status,
+                            event_image_url=event.event_image_url,
+                            organizer=organizer_dto,
+                            tags=[], 
+                            approved_volunteers_count=0
+                        )
+                        
+                        apps_list.append(ApplicationWithEvent(
+                            id=app.id,
+                            event_id=app.event_id,
+                            volunteer_id=app.volunteer_id,
+                            status=app.status,
+                            message=app.message,
+                            date_created=app.date_created,
+                            date_updated=app.date_created, # Fallback
+                            event=event_dto
+                        ))
+                    else:
+                        apps_list.append(ApplicationRead.from_orm(app))
+                else:
+                    apps_list.append(ApplicationRead.from_orm(app))
             
             # If filtering by event, we likely want to see volunteer details
             elif filters.event_id:
                 volunteer = await self.session.get(Users, app.volunteer_id)
-                volunteer_dto = UserListItem.from_orm(volunteer)
-                apps_list.append(ApplicationWithVolunteer(**app.__dict__, volunteer=volunteer_dto))
+                if volunteer:
+                    volunteer_dto = UserListItem(
+                        id=volunteer.id,
+                        fullname=volunteer.fullname,
+                        email=volunteer.email,
+                        avatar_url=volunteer.avatar_url,
+                        location=volunteer.location,
+                        date_created=volunteer.date_created,
+                        roles=[] # Explicit empty list since ORM relations are missing
+                    )
+                    apps_list.append(ApplicationWithVolunteer(
+                        id=app.id,
+                        event_id=app.event_id,
+                        volunteer_id=app.volunteer_id,
+                        status=app.status,
+                        message=app.message,
+                        date_created=app.date_created,
+                        date_updated=app.date_created,
+                        volunteer=volunteer_dto
+                    ))
+                else:
+                    apps_list.append(ApplicationRead.from_orm(app))
             
             # Default fallback
             else:

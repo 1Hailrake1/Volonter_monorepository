@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 from enum import Enum
 
@@ -66,6 +66,8 @@ class ApplicationRead(ApplicationBase):
     status: ApplicationStatus
     date_created: datetime
     date_updated: Optional[datetime] = None
+    event: Optional["EventListItem"] = None
+    volunteer: Optional["UserListItem"] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -97,7 +99,7 @@ class ApplicationFilters(BaseModel):
 
 class ApplicationListResponse(BaseModel):
     """Пагинированный список заявок"""
-    applications: list[ApplicationRead]  # или ApplicationWithEvent/ApplicationWithVolunteer
+    applications: list[Union[ApplicationWithEvent, ApplicationWithVolunteer, ApplicationRead]]
     total: int
     page: int
     page_size: int

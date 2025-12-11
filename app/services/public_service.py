@@ -7,7 +7,7 @@ from db.repositories.skills_repo import SkillsRepo
 from models.pydantic_response_request_models.user_dto import UserPublic
 from models.pydantic_response_request_models.event_dto import EventFilters, EventListResponse, EventStatus
 from models.pydantic_response_request_models.tag_dto import TagRead
-from models.pydantic_response_request_models.skill_dto import SkillRead
+from models.pydantic_response_request_models.skill_dto import SkillRead, SkillListResponse
 from typing import List
 
 
@@ -56,7 +56,7 @@ class PublicService(BaseService):
             tags_repo: TagsRepo = self.uow.tags
             return await tags_repo.get_all_tags()
     
-    async def get_all_skills(self) -> List[SkillRead]:
+    async def get_all_skills(self) -> SkillListResponse:
         """Получает список всех навыков"""
         async with self.uow:
             skills_repo: SkillsRepo = self.uow.skills

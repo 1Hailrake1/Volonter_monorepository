@@ -9,12 +9,16 @@ import DashboardPage from './pages/DashboardPage';
 import EventsPage from './pages/EventsPage';
 import EventDetailsPage from './pages/EventDetailsPage';
 import MyApplicationsPage from './pages/MyApplicationsPage';
+import OrganizerPage from './pages/OrganizerPage';
 import AdminPage from './pages/AdminPage';
 
 // Components
 import Navbar from './components/Navbar';
 
 import './App.css';
+
+import { NotificationProvider } from './contexts/NotificationContext';
+import { ConfirmationProvider } from './contexts/ConfirmationContext';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = React.useState(false);
@@ -47,74 +51,87 @@ function App() {
     };
 
     return (
-        <Router>
-            <div className="App">
-                {isAuthenticated && <Navbar user={user} onLogout={handleLogout} />}
+        <NotificationProvider>
+            <ConfirmationProvider>
+                <Router>
+                    <div className="App">
+                        {isAuthenticated && <Navbar user={user} onLogout={handleLogout} />}
 
-                <AnimatePresence mode="wait">
-                    <Routes>
-                        {/* Публичная страница */}
-                        <Route path="/" element={<PublicPage />} />
+                        <AnimatePresence mode="wait">
+                            <Routes>
+                                {/* Публичная страница */}
+                                <Route path="/" element={<PublicPage />} />
 
-                        {/* Страница логина */}
-                        <Route
-                            path="/login"
-                            element={
-                                isAuthenticated ?
-                                    <Navigate to="/dashboard" /> :
-                                    <LoginPage onLogin={() => checkAuth()} />
-                            }
-                        />
+                                {/* Страница логина */}
+                                <Route
+                                    path="/login"
+                                    element={
+                                        isAuthenticated ?
+                                            <Navigate to="/dashboard" /> :
+                                            <LoginPage onLogin={() => checkAuth()} />
+                                    }
+                                />
 
-                        {/* Защищённые маршруты */}
-                        <Route
-                            path="/dashboard"
-                            element={
-                                isAuthenticated ?
-                                    <DashboardPage user={user} /> :
-                                    <Navigate to="/login" />
-                            }
-                        />
+                                {/* Защищённые маршруты */}
+                                <Route
+                                    path="/dashboard"
+                                    element={
+                                        isAuthenticated ?
+                                            <DashboardPage user={user} /> :
+                                            <Navigate to="/login" />
+                                    }
+                                />
 
-                        <Route
-                            path="/events"
-                            element={
-                                isAuthenticated ?
-                                    <EventsPage /> :
-                                    <Navigate to="/login" />
-                            }
-                        />
+                                <Route
+                                    path="/events"
+                                    element={
+                                        isAuthenticated ?
+                                            <EventsPage /> :
+                                            <Navigate to="/login" />
+                                    }
+                                />
 
-                        <Route
-                            path="/events/:id"
-                            element={
-                                isAuthenticated ?
-                                    <EventDetailsPage /> :
-                                    <Navigate to="/login" />
-                            }
-                        />
+                                <Route
+                                    path="/events/:id"
+                                    element={
+                                        isAuthenticated ?
+                                            <EventDetailsPage /> :
+                                            <Navigate to="/login" />
+                                    }
+                                />
 
-                        <Route
-                            path="/my-applications"
-                            element={
-                                isAuthenticated ?
-                                    <MyApplicationsPage /> :
-                                    <Navigate to="/login" />
-                            }
-                        />
+                                <Route
+                                    path="/my-applications"
+                                    element={
+                                        isAuthenticated ?
+                                            <MyApplicationsPage /> :
+                                            <Navigate to="/login" />
+                                    }
+                                />
 
-                        <Route
-                            path="/admin"
-                            element={
-                                isAuthenticated && user?.roles?.some(r => r.role_name === 'admin') ?
-                                    <AdminPage /> :
-                                    <Navigate to="/dashboard" />
-                            }
-                        />
-                    </Routes>
-                </AnimatePresence>
-            </div>
-        </Router>
+                                <Route
+                                    path="/admin"
+                                    element={
+                                        isAuthenticated && user?.roles?.some(r => r.role_name === 'admin') ?
+                                            <AdminPage /> :
+                                            <Navigate to="/dashboard" />
+                                    }
+                                />
+
+                                <Route
+                                    path="/organizer"
+                                    element={
+                                        isAuthenticated && user?.roles?.some(r => r.role_name === 'organizer' || r.role_name === 'admin') ?
+                                            <OrganizerPage /> :
+                                            <Navigate to="/dashboard" />
+                                    }
+                                />
+                            </Routes>
+                        </AnimatePresence>
+                    </div>
+                </Router>
+            </ConfirmationProvider>
+        </NotificationProvider>
     );
 }
 

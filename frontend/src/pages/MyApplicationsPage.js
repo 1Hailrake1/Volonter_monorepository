@@ -4,6 +4,8 @@ import { FiSearch, FiCalendar, FiMapPin, FiClock, FiX } from 'react-icons/fi';
 import { applicationsAPI } from '../api/api';
 import { format, parseISO, isValid } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useConfirm } from '../contexts/ConfirmationContext';
+import { useNotification } from '../contexts/NotificationContext';
 import './MyApplicationsPage.css';
 
 const MyApplicationsPage = () => {
@@ -12,6 +14,8 @@ const MyApplicationsPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const { confirm } = useConfirm();
+    const { notify } = useNotification();
 
     const statusTranslations = {
         pending: 'На рассмотрении',
@@ -42,6 +46,7 @@ const MyApplicationsPage = () => {
         } catch (error) {
             console.error('Error loading applications:', error);
             setApplications([]);
+            notify('Ошибка при загрузке заявок', 'error');
         } finally {
             setLoading(false);
         }
@@ -70,16 +75,21 @@ const MyApplicationsPage = () => {
         setFilteredApplications(filtered);
     };
 
-    const handleCancelApplication = async (applicationId) => {
-        if (!window.confirm('Are you sure you want to cancel this application?')) return;
-
-        try {
-            await applicationsAPI.cancel(applicationId);
-            await loadApplications();
-        } catch (error) {
-            console.error('Error canceling application:', error);
-            alert('Ошибка при отмене заявки');
-        }
+    const handleCancelApplication = (applicationId) => {
+        confirm({
+            title: 'Отмена заявки',
+            message: 'Вы уверены, что хотите отменить эту заявку?',
+            onConfirm: async () => {
+                try {
+                    await applicationsAPI.cancel(applicationId);
+                    notify('Заявка успешно отменена', 'success');
+                    await loadApplications();
+                } catch (error) {
+                    console.error('Error canceling application:', error);
+                    notify('Ошибка при отмене заявки', 'error');
+                }
+            }
+        });
     };
 
     if (loading) {
@@ -227,7 +237,7 @@ const ApplicationCard = ({ application, index, onCancel, statusTranslations, sta
                 <div className="application-date">
                     <FiClock />
                     <span>
-                        Подано: {formatSafeDate(application.created_at, 'd MMMM yyyy, HH:mm')}
+                        Подано: {formatSafeDate(application.date_created, 'd MMMM yyyy, HH:mm')}
                     </span>
                 </div>
                 {canCancel && (

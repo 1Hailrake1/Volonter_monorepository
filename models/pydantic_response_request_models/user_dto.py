@@ -60,18 +60,22 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     """Обновление профиля (все поля опциональны)"""
     id: int = Field(..., description="ID пользователя для обновления")
-    email: Optional[str] = Field(None, max_length=255)
     fullname: Optional[str] = Field(None, min_length=2, max_length=255)
     location: Optional[str] = Field(None, max_length=255)
     date_birth: Optional[datetime] = None
     avatar_url: Optional[str] = Field(None, max_length=500)
-
+    roles: List[RoleRead] = Field(default_factory=list)
+    skills: List[SkillRead] = Field(default_factory=list)
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
             "example": {
                 "fullname": "Иван Петров",
-                "location": "Санкт-Петербург"
+                "location": "Санкт-Петербург",
+                "date_birth": "1995-03-15T00:00:00",
+                "avatar_url": "https://avatars.githubusercontent.com",
+                "roles": ["admin", "organizator"],
+                "skills": ["read"]
             }
         }
     )
@@ -118,7 +122,6 @@ class UserPublic(BaseModel):
     avatar_url: Optional[str] = None
     location: Optional[str] = None
     skills: List[SkillRead] = Field(default_factory=list)
-    # НЕ показываем: email, date_birth, date_created, roles
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -128,8 +131,11 @@ class UserListItem(BaseModel):
     """Элемент списка пользователей (минимальная инфа)"""
     id: int
     fullname: str
+    email: EmailStr
     avatar_url: Optional[str] = None
     location: Optional[str] = None
+    date_created: datetime
+    roles: List[RoleRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

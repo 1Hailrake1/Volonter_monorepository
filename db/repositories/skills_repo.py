@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete, update, func
+from sqlalchemy import select, delete, update, func, bindparam
 from typing import List
 
 from models.orm_db_models.tables import Skills
@@ -15,12 +15,15 @@ from models.pydantic_response_request_models.skill_dto import (
 @register_repository("skills")
 class SkillsRepo(BaseRepo):
 
-    async def get_all_skills(self) -> List[SkillRead]:
+    async def get_all_skills(self) -> SkillListResponse:
         """Получает список всех навыков."""
         stmt = select(Skills)
         result = await self.session.execute(stmt)
         skills_orm = result.scalars().all()
-        return [SkillRead.from_orm(skill) for skill in skills_orm]
+        return SkillListResponse(
+            skills=[SkillRead.from_orm(s) for s in skills_orm],
+            total=len(skills_orm)
+        )
 
     async def get_skill_by_id(self, skill_id: int) -> SkillRead | None:
         """Получает навык по ID."""

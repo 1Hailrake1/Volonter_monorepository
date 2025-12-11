@@ -11,7 +11,8 @@ from models.pydantic_response_request_models.event_dto import (
     EventRead,
     EventFilters,
     EventListResponse,
-    EventStatusUpdate
+    EventStatusUpdate,
+    EventListItem
 )
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -89,7 +90,7 @@ async def delete_event(
     return await event_service.delete_event(event_id, user.user_id)
 
 
-@router.get("/my/organized", response_model=list[EventRead])
+@router.get("/my/organized", response_model=list[EventListItem])
 async def get_my_events(
     user: UserTokenInfo = Depends(verify_access_token_dependency),
     services: Services = Depends(get_services)

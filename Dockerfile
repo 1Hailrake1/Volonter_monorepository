@@ -1,30 +1,30 @@
-FROM python:3.10-bullseye
+FROM python:3.10-slim
 
-ENV ACCEPT_EULA=Y \
-    DEBIAN_FRONTEND=noninteractive \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
 
+# Установка системных зависимостей для PostgreSQL
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      unixodbc unixodbc-dev libodbc1 odbcinst \
-      ca-certificates curl gnupg \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
-
-COPY msodbcsql17_17.10.5.1-1_amd64.deb /tmp/msodbcsql17.deb
-RUN set -eux; \
-    dpkg -i /tmp/msodbcsql17.deb || apt-get -y -f install; \
-    rm -f /tmp/msodbcsql17.deb; \
-    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Копируем и устанавливаем зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
+# Копируем весь проект
 COPY . .
 
-EXPOSE 8081
+# Создаем директорию для логов
+RUN mkdir -p /app/logger/logs
 
-# Два процесса gunicorn (uvicorn worker)
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "main:app", \
-     "--workers", "4", "--bind", "0.0.0.0:8081"]
+# Открываем порт
+EXPOSE 8060
+
+# Запуск с uvicorn в 4 воркера
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8060", "--workers", "4"]

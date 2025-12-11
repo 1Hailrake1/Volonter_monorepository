@@ -1,0 +1,62 @@
+.notification-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: 12px;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    backdrop-filter: blur(10px);
+    max-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notification-container.success {
+    background: rgba(34, 197, 94, 0.9); /* Green */
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+.notification-container.error {
+    background: rgba(239, 68, 68, 0.9); /* Red */
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.notification-container.info {
+    background: rgba(59, 130, 246, 0.9); /* Blue */
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.notification-icon {
+    font-size: 24px;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.notification-content {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-right: 15px;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.notification-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}

@@ -1,6 +1,11 @@
 from app.core.exceptions import NotFoundError, AlreadyExistsError, InternalServerError
 from app.services.services_factory import BaseService, register_services
+from db.repositories.roles_repo import RolesRepo
+from db.repositories.skills_repo import SkillsRepo
 from db.repositories.user_repo import UserRepo
+from db.repositories.user_skills_repo import UserSkillsRepo
+from models.pydantic_response_request_models.role_dto import RoleRead, RoleListResponse
+from models.pydantic_response_request_models.skill_dto import SkillRead, SkillListResponse
 from models.pydantic_response_request_models.user_dto import UserCabinetInfo, UserUpdate
 from app.email_functools.email_sender import EmailSender
 from app.email_functools.verify_codes_storage import codes_storage
@@ -17,65 +22,31 @@ class UserService(BaseService):
                 raise NotFoundError("Пользователь не найден")
             return user_info
 
-    async def update_user_profile(self, user_id: int, update_data: UserUpdate) -> dict:
-        """
-        Обновляет профиль. Если меняется email, отправляет код и деактивирует пользователя.
-        Возвращает словарь с информацией о результате.
-        """
+    async def update_user(self, user_update: UserUpdate) -> UserCabinetInfo:
         async with self.uow:
             user_repo: UserRepo = self.uow.users
-            current_user = await user_repo.get_user(user_id)
-            if not current_user:
-                raise NotFoundError("Пользователь не найден")
+            user_skills_repo: UserSkillsRepo = self.uow.user_skills
+            roles_repo: RolesRepo = self.uow.roles
 
-            # Проверка на смену email
-            email_changed = False
-            if update_data.email and update_data.email != current_user.email:
-                # Проверяем, не занят ли новый email
-                if await user_repo.exists_user(update_data.email):
-                    raise AlreadyExistsError("Email уже занят")
-                email_changed = True
+            await user_repo.update_user(user_update)
+            await user_skills_repo.update_user_skills(user_update.id, user_update.skills)
+            for role in user_update.roles:
+                await roles_repo.add_role_to_user(user_update.id, role.id)
 
-            # Обновляем данные
-            updated_user = await user_repo.update_user(update_data)
-            
-            if email_changed:
-                # Деактивируем пользователя
-                await user_repo.set_user_active_status(current_user.id, False)
-
+            new_user_info = await user_repo.get_user_cabinet_info(user_update.id)
             await self.uow.commit()
-            
-            result = {"user": updated_user, "email_verification_required": False}
+        return new_user_info
 
-            if email_changed:
-                # Отправляем код на НОВЫЙ email
-                email_sender = EmailSender()
-                code = codes_storage.put_code(update_data.email)
-                try:
-                    await email_sender.send_verification_code(update_data.email, code)
-                except Exception as e:
-                    # Если не удалось отправить, может стоит откатить транзакцию?
-                    # Но мы уже сделали commit.
-                    # Это сложный момент.
-                    # Пока просто логируем или кидаем ошибку.
-                    raise InternalServerError(f"Не удалось отправить код подтверждения: {e}")
-                
-                # Теперь деактивируем (нужно было делать в транзакции)
-                # Я сделаю это в отдельном вызове репозитория, но мне нужен метод.
-                # Я добавлю метод `set_user_active_status` в user_repo.
-                
-                result["email_verification_required"] = True
-                result["message"] = "Email изменен. Аккаунт деактивирован. Проверьте почту для подтверждения."
-
-            return result
-
-    async def reactivate_user(self, email: str) -> bool:
+    async def get_roles(self) -> RoleListResponse:
         async with self.uow:
-            user_repo: UserRepo = self.uow.users
-            user = await user_repo.get_user_by_email(email)
-            if not user:
-                raise NotFoundError("Пользователь не найден")
-            
-            await user_repo.reactivate_user(user.id)
-            await self.uow.commit()
-            return True
+            roles_repo: RolesRepo = self.uow.roles
+
+            result = await roles_repo.get_all_roles()
+        return result
+
+    async def get_skills(self) -> SkillListResponse:
+        async with self.uow:
+            skills_repo: SkillsRepo = self.uow.skills
+
+            result = await skills_repo.get_all_skills()
+        return result

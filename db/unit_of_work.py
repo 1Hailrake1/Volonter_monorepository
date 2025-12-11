@@ -47,6 +47,7 @@ class UnitOfWork:
             logger.error(f"Сбой транзакции (Transaction failed): {exc_type.__name__}: {exc_val}")
         elif not self._is_committed:
             logger.warning("Транзакция завершена без явного коммита - выполняется откат (rolling back)")
+            await self.rollback()
 
         return False
 
@@ -68,13 +69,16 @@ def register_repository(name:str):
 
 
 
-# убран генератор для DI, так как я чувствовал некое дублирование логики паттерна uow и DI
 async def get_uow(
         db_session_maker:AsyncSession = Depends(db_manager.get_session),
 ):
-    try:
-        async with db_session_maker as db_session:
-            uow = UnitOfWork(db_session, REPOSITORY_REGISTRY)
+    async with db_session_maker as db_session:
+        uow = UnitOfWork(db_session, REPOSITORY_REGISTRY)
+        try:
             yield uow
-    finally:
-        pass
+        except Exception as e:
+            await uow.rollback()
+            logger.error(f"Ошибка обработки в транзакции {e}, выполняем roollback")
+            raise
+        finally:
+            pass

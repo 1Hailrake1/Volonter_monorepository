@@ -2,7 +2,7 @@ from sqlalchemy import select, delete, update, func, insert, and_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
-from models.orm_db_models.tables import Events, Users, EventTags, RequiredEventsSkills, Tags, Skills
+from models.orm_db_models.tables import Events, Users, EventTags, RequiredEventsSkills, Tags, Skills, Applications
 from db.repositories.base_repo import BaseRepo
 from db.unit_of_work import register_repository
 from models.pydantic_response_request_models.event_dto import (
@@ -73,8 +73,15 @@ class EventsRepo(BaseRepo):
             tags=tags_list,
             required_skills=skills_list,
             applications_count=0, # Placeholder, service should populate or separate query
-            approved_volunteers_count=0 # Placeholder
+            approved_volunteers_count=await self._count_approved_volunteers(event_id)
         )
+
+    async def _count_approved_volunteers(self, event_id: int) -> int:
+        stmt = select(func.count()).select_from(Applications).where(
+            Applications.event_id == event_id,
+            Applications.status == 'approved'
+        )
+        return await self.session.scalar(stmt) or 0
 
     async def create_event(self, event_in: EventCreate, organizer_id: int) -> EventRead:
         """Создает новое событие."""
@@ -205,7 +212,8 @@ class EventsRepo(BaseRepo):
                 **event.__dict__,
                 organizer=organizer_dto,
                 tags=tags_list,
-                approved_volunteers_count=0 # Placeholder
+                tags=tags_list,
+                approved_volunteers_count=await self._count_approved_volunteers(event.id)
             ))
             
         return EventListResponse(
@@ -215,9 +223,32 @@ class EventsRepo(BaseRepo):
             page_size=filters.page_size
         )
 
-    async def get_events_by_organizer(self, organizer_id: int) -> List[EventRead]:
+    async def get_events_by_organizer(self, organizer_id: int) -> List[EventListItem]:
         """Получает все события организатора."""
-        stmt = select(Events).where(Events.organizer_id == organizer_id)
+        stmt = select(Events).where(Events.organizer_id == organizer_id).order_by(Events.start_date.desc())
         result = await self.session.execute(stmt)
         events_orm = result.scalars().all()
-        return [EventRead.from_orm(e) for e in events_orm]
+        
+        # Pre-fetch organizer info (it's the same for all events)
+        organizer = await self.session.get(Users, organizer_id)
+        organizer_dto = OrganizerRead.from_orm(organizer) if organizer else None
+        
+        events_list = []
+        for event in events_orm:
+             # Fetch tags for list item
+            tags_stmt = (
+                select(Tags)
+                .join(EventTags, EventTags.tag_id == Tags.id)
+                .where(EventTags.event_id == event.id)
+            )
+            tags_res = await self.session.execute(tags_stmt)
+            tags_list = [TagRead.from_orm(t) for t in tags_res.scalars().all()]
+            
+            events_list.append(EventListItem(
+                **event.__dict__,
+                organizer=organizer_dto,
+                tags=tags_list,
+                approved_volunteers_count=await self._count_approved_volunteers(event.id)
+            ))
+            
+        return events_list

@@ -1,4 +1,3 @@
-
 from sqlalchemy import delete, select, update, func
 from sqlalchemy.orm import selectinload
 
@@ -11,7 +10,7 @@ from models.pydantic_response_request_models.user_dto import (
     UserPublic,
     UserInDB,
     UserPasswordChange,
-    UserListResponse,  # ВАЖНО: для вашей задачи
+    UserListResponse,
     UserListItem, UserRegister,
     UserCabinetInfo, UserStatistics, UserEventsInfo, RoleRead
 )
@@ -34,12 +33,12 @@ class UserRepo(BaseRepo):
 
         return UserRead.from_orm(user_orm)
 
-    async def update_user(self, user_in: UserUpdate) -> UserRead | None:  # Добавлено None в контракт
+    async def update_user(self, user_in: UserUpdate) -> UserRead | None:
         """Обновляет поля пользователя по ID."""
         user = await self.session.get(Users, user_in.id)
 
         if user is None:
-            return None  # Репозиторий возвращает None, а Сервис поднимет NotFoundError
+            return None
 
         update_data = user_in.model_dump(exclude_unset=True, exclude={"id"})
 
@@ -106,7 +105,23 @@ class UserRepo(BaseRepo):
         result = await self.session.execute(stmt)
         users_orm = result.scalars().all()
         
-        users_list = [UserListItem.from_orm(user) for user in users_orm]
+        users_list = []
+        for user in users_orm:
+            # Ручная подгрузка ролей, так как нет relationship в модели
+            stmt_roles = select(RolesInfo).join(Roles, Roles.role_id == RolesInfo.id).where(Roles.user_id == user.id)
+            roles_res = await self.session.execute(stmt_roles)
+            roles = roles_res.scalars().all()
+            
+            user_dto = UserListItem(
+                id=user.id,
+                fullname=user.fullname,
+                email=user.email,
+                avatar_url=user.avatar_url,
+                location=user.location,
+                date_created=user.date_created,
+                roles=[RoleRead.from_orm(r) for r in roles]
+            )
+            users_list.append(user_dto)
         
         return UserListResponse(
             users=users_list,

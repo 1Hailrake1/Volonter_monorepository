@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FiUsers, FiCalendar, FiFileText, FiCheck, FiX, FiEdit } from 'react-icons/fi';
 import { adminAPI, eventsAPI } from '../api/api';
+import RoleChangeModal from '../components/RoleChangeModal';
+import { useNotification } from '../contexts/NotificationContext';
+import { useConfirm } from '../contexts/ConfirmationContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import './AdminPage.css';
@@ -12,6 +15,9 @@ const AdminPage = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
+    const [editingUser, setEditingUser] = useState(null);
+    const { notify } = useNotification();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         loadData();
@@ -31,30 +37,70 @@ const AdminPage = () => {
             setUsers(usersRes.data.users || []);
         } catch (error) {
             console.error('Error loading admin data:', error);
+            notify('Ошибка загрузки данных', 'error');
         } finally {
             setLoading(false);
         }
     };
 
+    const handleRoleChangeSuccess = () => {
+        setEditingUser(null);
+        loadData();
+    };
+
     const handleApproveEvent = async (eventId) => {
         try {
             await eventsAPI.updateStatus(eventId, 'approved');
+            notify('Мероприятие одобрено', 'success');
             await loadData();
         } catch (error) {
             console.error('Error approving event:', error);
-            alert('Ошибка при одобрении мероприятия');
+            notify('Ошибка при одобрении мероприятия', 'error');
         }
     };
 
-    const handleRejectEvent = async (eventId) => {
-        if (!window.confirm('Вы уверены, что хотите отклонить это мероприятие?')) return;
+    const handleRejectEvent = (eventId) => {
+        confirm({
+            title: 'Отклонение мероприятия',
+            message: 'Вы уверены, что хотите отклонить это мероприятие?',
+            onConfirm: async () => {
+                try {
+                    await eventsAPI.updateStatus(eventId, 'canceled');
+                    notify('Мероприятие отклонено', 'success');
+                    await loadData();
+                } catch (error) {
+                    console.error('Error rejecting event:', error);
+                    notify('Ошибка при отклонении мероприятия', 'error');
+                }
+            }
+        });
+    };
 
+    const handleBlockUser = (userId) => {
+        confirm({
+            title: 'Блокировка пользователя',
+            message: 'Вы уверены, что хотите заблокировать этого пользователя?',
+            onConfirm: async () => {
+                try {
+                    await adminAPI.blockUser(userId);
+                    notify('Пользователь заблокирован', 'success');
+                    await loadData();
+                } catch (error) {
+                    console.error('Error blocking user:', error);
+                    notify('Ошибка при блокировке пользователя', 'error');
+                }
+            }
+        });
+    };
+
+    const handleUnblockUser = async (userId) => {
         try {
-            await eventsAPI.updateStatus(eventId, 'canceled');
+            await adminAPI.unblockUser(userId);
+            notify('Пользователь разблокирован', 'success');
             await loadData();
         } catch (error) {
-            console.error('Error rejecting event:', error);
-            alert('Ошибка при отклонении мероприятия');
+            console.error('Error unblocking user:', error);
+            notify('Ошибка при разблокировке пользователя', 'error');
         }
     };
 
@@ -180,7 +226,13 @@ const AdminPage = () => {
                         {users.length > 0 ? (
                             <div className="users-table">
                                 {users.map((user) => (
-                                    <UserRow key={user.id} user={user} />
+                                    <UserRow
+                                        key={user.id}
+                                        user={user}
+                                        onBlock={handleBlockUser}
+                                        onUnblock={handleUnblockUser}
+                                        onEditRole={() => setEditingUser(user)} // Pass handler
+                                    />
                                 ))}
                             </div>
                         ) : (
@@ -191,6 +243,17 @@ const AdminPage = () => {
                     </motion.div>
                 )}
             </div>
+
+            {/* Role Change Modal */}
+            <AnimatePresence>
+                {editingUser && (
+                    <RoleChangeModal
+                        user={editingUser}
+                        onClose={() => setEditingUser(null)}
+                        onSuccess={handleRoleChangeSuccess}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };
@@ -243,13 +306,15 @@ const EventRow = ({ event, onApprove, onReject }) => (
     </div>
 );
 
-const UserRow = ({ user }) => (
+const UserRow = ({ user, onBlock, onUnblock, onEditRole }) => (
     <div className="table-row">
         <div className="row-content">
             <div>
                 <h4>{user.fullname || 'Без имени'}</h4>
                 <div className="row-meta">
                     <span>{user.email}</span>
+                    <span>•</span>
+                    <span>Рег: {user.date_created ? format(new Date(user.date_created), 'dd.MM.yyyy', { locale: ru }) : '-'}</span>
                     {user.location && (
                         <>
                             <span>•</span>
@@ -262,7 +327,37 @@ const UserRow = ({ user }) => (
         <div className="row-info">
             <span className="role-badge">
                 {user.roles?.[0]?.name || 'Пользователь'}
+                {user.roles?.length > 1 && ` +${user.roles.length - 1}`}
             </span>
+        </div>
+        <div className="row-actions">
+            {/* Edit Role Button */}
+            <button
+                className="btn-primary"
+                style={{ padding: '8px', marginRight: '5px' }}
+                onClick={onEditRole}
+                title="Изменить роль"
+            >
+                <FiEdit />
+            </button>
+
+            {user.is_active !== false ? (
+                <button
+                    className="btn-reject"
+                    onClick={() => onBlock(user.id)}
+                    title="Заблокировать"
+                >
+                    <FiX />
+                </button>
+            ) : (
+                <button
+                    className="btn-approve"
+                    onClick={() => onUnblock(user.id)}
+                    title="Разблокировать"
+                >
+                    <FiCheck />
+                </button>
+            )}
         </div>
     </div>
 );

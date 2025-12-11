@@ -27,7 +27,7 @@ class EventBase(BaseModel):
     required_volunteers: int = Field(..., ge=1, le=1000, description="Требуется волонтеров")
     start_date: datetime = Field(..., description="Дата и время начала")
     end_date: datetime = Field(..., description="Дата и время окончания")
-    contact_info: Optional[str] = Field(None, description="Контакты организатора (email, telegram)")
+    event_image_url: Optional[str] = Field(None, max_length=500, description="Ссылка на изображение")
 
     @field_validator('end_date')
     @classmethod
@@ -70,7 +70,6 @@ class EventUpdate(BaseModel):
     required_volunteers: Optional[int] = Field(None, ge=1, le=1000)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    contact_info: Optional[str] = None
     event_image_url: Optional[str] = Field(None, max_length=500)
     tag_ids: Optional[List[int]] = None  # Для обновления тегов
     skill_ids: Optional[List[int]] = None  # Для обновления навыков
