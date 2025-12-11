@@ -32,4 +32,4 @@ EXPOSE 8060
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Запуск с uvicorn в 4 воркера
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8060", "--workers", "4"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8060", "--workers", "1"]
