@@ -32,6 +32,8 @@ async def verify_code(
         data: VerifyCodeRequest,
         response:Response
 ):
+    print(data, data.email, data.code)
+    print(codes_storage, codes_storage._codes)
     if not codes_storage.verify_code(data.email, data.code):
         raise UnauthorizedError("Неверный или истекший код верификации")
 
