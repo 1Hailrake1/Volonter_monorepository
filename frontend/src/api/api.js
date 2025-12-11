@@ -1,10 +1,11 @@
 import axios from 'axios';
 
-// Для production используем относительный путь (через nginx)
-// Для development - прямое подключение к backend
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-    ? '/v1'  // В production nginx проксирует /v1/ на backend
-    : 'http://localhost:8060/v1';  // В development прямое подключение
+// Определяем базовый URL на основе текущего хоста
+// Если localhost - используем прямое подключение к backend
+// Иначе - используем относительный путь через nginx
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8060/v1'  // Development - прямое подключение
+    : '/v1';  // Production - через nginx
 
 
 const api = axios.create({
