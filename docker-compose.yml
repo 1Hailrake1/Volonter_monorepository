@@ -33,11 +33,11 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-volunteer_platform}
       - DATABASE_URL_ASYNC=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-volunteer_platform}
+      - TZ=Europe/Moscow
     env_file:
       - .env
     volumes:
       - ./logger/logs:/app/logger/logs
-      - ./app/security/secrets:/app/app/security/secrets
     ports:
       - "${BACKEND_PORT:-8060}:8060"
     networks:
