@@ -20,11 +20,18 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Копируем весь проект
 COPY . .
 
-# Создаем директорию для логов
-RUN mkdir -p /app/logger/logs
+# Копируем и настраиваем entrypoint скрипт
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Создаем директорию для логов и секретов
+RUN mkdir -p /app/logger/logs /app/app/security/secrets
 
 # Открываем порт
 EXPOSE 8060
+
+# Используем entrypoint для генерации ключей при каждом запуске
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Запуск с uvicorn в 4 воркера
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8060", "--workers", "4"]
