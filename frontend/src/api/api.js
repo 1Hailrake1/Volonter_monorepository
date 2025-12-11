@@ -1,11 +1,13 @@
 import axios from 'axios';
 
-// Определяем базовый URL на основе текущего хоста
-// Если localhost - используем прямое подключение к backend
-// Иначе - используем относительный путь через nginx
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:8060/v1'  // Development - прямое подключение
-    : '/v1';  // Production - через nginx
+// ========================================
+// КОНФИГУРАЦИЯ API URL
+// ========================================
+// Для PRODUCTION (сервер) используйте: '/v1'
+// Для DEVELOPMENT (локально) используйте: 'http://localhost:8060/v1'
+
+const API_BASE_URL = '/v1';  // ← PRODUCTION (сервер)
+// const API_BASE_URL = 'http://localhost:8060/v1';  // ← DEVELOPMENT (локально)
 
 
 const api = axios.create({

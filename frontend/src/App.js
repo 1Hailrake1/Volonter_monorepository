@@ -2,6 +2,15 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ========================================
+// КОНФИГУРАЦИЯ API URL
+// ========================================
+// Для PRODUCTION (сервер) используйте: '/v1'
+// Для DEVELOPMENT (локально) используйте: 'http://localhost:8060/v1'
+
+const API_URL = '/v1';  // ← PRODUCTION (сервер)
+// const API_URL = 'http://localhost:8060/v1';  // ← DEVELOPMENT (локально)
+
 // Pages
 import PublicPage from './pages/PublicPage';
 import LoginPage from './pages/LoginPage';
@@ -31,7 +40,7 @@ function App() {
 
     const checkAuth = async () => {
         try {
-            const response = await fetch('http://localhost:8060/v1/auth/login/me', {
+            const response = await fetch(`${API_URL}/auth/login/me`, {
                 method: 'POST',
                 credentials: 'include',
             });
