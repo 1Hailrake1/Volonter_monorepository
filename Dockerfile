@@ -1,15 +1,11 @@
-FROM python:3.10-slim
+FROM python:3.10
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    PYTHONUNBUFFERED=1
 
-# Установка системных зависимостей для PostgreSQL
+# Установка только PostgreSQL библиотек (остальное уже есть в полном образе)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
     libpq-dev \
-    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
