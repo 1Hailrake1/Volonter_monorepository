@@ -64,11 +64,9 @@ class SkillsRepo(BaseRepo):
 
     async def get_paginated_skills(self, page: int, page_size: int) -> SkillListResponse:
         """Пагинированный список навыков."""
-        # Count total
         count_stmt = select(func.count()).select_from(Skills)
         total = await self.session.scalar(count_stmt) or 0
 
-        # Get page
         offset = (page - 1) * page_size
         stmt = select(Skills).limit(page_size).offset(offset)
         result = await self.session.execute(stmt)

@@ -43,22 +43,18 @@ class ReviewsRepo(BaseRepo):
         if filters.min_rating:
             query = query.where(Reviews.rating >= filters.min_rating)
 
-        # Count total
         count_stmt = select(func.count()).select_from(query.subquery())
         total = await self.session.scalar(count_stmt) or 0
-        
-        # Calculate average rating for this selection (optional, but useful)
+
         avg_stmt = select(func.avg(Reviews.rating)).select_from(query.subquery())
         average_rating = await self.session.scalar(avg_stmt)
 
-        # Pagination
         offset = (filters.page - 1) * filters.page_size
         query = query.limit(filters.page_size).offset(offset)
 
         result = await self.session.execute(query)
         reviews_orm = result.scalars().all()
 
-        # Enrich with user info
         reviews_list = []
         for review in reviews_orm:
             from_user = await self.session.get(Users, review.from_user_id)
@@ -87,8 +83,7 @@ class ReviewsRepo(BaseRepo):
         # Average rating
         avg_stmt = select(func.avg(Reviews.rating)).where(Reviews.to_user_id == user_id)
         avg = await self.session.scalar(avg_stmt) or 0.0
-        
-        # Distribution
+
         dist_stmt = (
             select(Reviews.rating, func.count(Reviews.rating))
             .where(Reviews.to_user_id == user_id)
@@ -96,8 +91,7 @@ class ReviewsRepo(BaseRepo):
         )
         dist_result = await self.session.execute(dist_stmt)
         distribution = {r: c for r, c in dist_result.all()}
-        
-        # Fill missing ratings with 0
+
         full_distribution = {i: distribution.get(i, 0) for i in range(1, 6)}
 
         return UserReviewStats(

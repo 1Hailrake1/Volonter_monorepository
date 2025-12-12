@@ -81,14 +81,12 @@ class UserRepo(BaseRepo):
         """
         Получает публичную информацию о пользователе (без конфиденциальных полей).
         """
-        # Используем session.get, так как получаем по PK, это самый быстрый способ
         user_orm = await self.session.get(Users, user_id)
 
         return UserPublic.from_orm(user_orm) if user_orm else None
 
     async def get_total_users_count(self) -> int:
         """Получает общее количество пользователей для пагинации."""
-        # Используем func.count() для подсчета строк
         stmt = select(func.count()).select_from(Users)
         total_count = await self.session.scalar(stmt)
         return total_count if total_count is not None else 0
@@ -107,7 +105,6 @@ class UserRepo(BaseRepo):
         
         users_list = []
         for user in users_orm:
-            # Ручная подгрузка ролей, так как нет relationship в модели
             stmt_roles = select(RolesInfo).join(Roles, Roles.role_id == RolesInfo.id).where(Roles.user_id == user.id)
             roles_res = await self.session.execute(stmt_roles)
             roles = roles_res.scalars().all()
@@ -141,25 +138,20 @@ class UserRepo(BaseRepo):
         """
         Собирает статистику по пользователю.
         """
-        # 1. Количество мероприятий, где участвовал (Applications.status == 'approved' и Events.status == 'passed' или просто approved?)
-        # Будем считать approved заявки.
         stmt_participated = select(func.count()).select_from(Applications).where(
             Applications.volunteer_id == user_id,
             Applications.status == 'approved'
         )
         participated_count = await self.session.scalar(stmt_participated) or 0
 
-        # 2. Количество организованных мероприятий
         stmt_organized = select(func.count()).select_from(Events).where(
             Events.organizer_id == user_id
         )
         organized_count = await self.session.scalar(stmt_organized) or 0
 
-        # 3. Средний рейтинг (из Reviews, где to_user_id == user_id)
         stmt_rating = select(func.avg(Reviews.rating)).where(Reviews.to_user_id == user_id)
         avg_rating = await self.session.scalar(stmt_rating)
 
-        # 4. Количество отзывов
         stmt_reviews_count = select(func.count()).select_from(Reviews).where(Reviews.to_user_id == user_id)
         reviews_count = await self.session.scalar(stmt_reviews_count) or 0
 
@@ -179,10 +171,9 @@ class UserRepo(BaseRepo):
         if role == 'organizer':
             stmt = select(Events).where(Events.organizer_id == user_id).order_by(Events.start_date.desc())
         else:
-            # volunteer - через Applications
             stmt = select(Events).join(Applications, Applications.event_id == Events.id).where(
                 Applications.volunteer_id == user_id,
-                Applications.status == 'approved' # Только подтвержденные участия
+                Applications.status == 'approved'
             ).order_by(Events.start_date.desc())
 
         result = await self.session.execute(stmt)
@@ -198,25 +189,19 @@ class UserRepo(BaseRepo):
         if not user:
             return None
 
-        # 1. Получаем роли
         stmt_roles = select(RolesInfo).join(Roles, Roles.role_id == RolesInfo.id).where(Roles.user_id == user_id)
         roles_res = await self.session.execute(stmt_roles)
         roles_list = roles_res.scalars().all()
 
-        # 2. Получаем скиллы
         stmt_skills = select(Skills).join(UserSkills, UserSkills.skill_id == Skills.id).where(UserSkills.user_id == user_id)
         skills_res = await self.session.execute(stmt_skills)
         skills_list = skills_res.scalars().all()
-        
-        # 3. Статистика
+
         stats = await self.get_user_statistics(user_id)
-        
-        # 4. События
+
         events_participated = await self.get_user_events(user_id, role='volunteer')
         events_organized = await self.get_user_events(user_id, role='organizer')
 
-        # Собираем DTO
-        # UserCabinetInfo наследуется от UserRead, поэтому нужно заполнить поля UserRead
         user_read = UserRead.from_orm(user)
         
         return UserCabinetInfo(

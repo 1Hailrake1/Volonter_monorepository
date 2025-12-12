@@ -36,7 +36,6 @@ class RolesRepo(BaseRepo):
 
     async def add_role_to_user(self, user_id: int, role_id: int) -> bool:
         """Добавляет роль пользователю."""
-        # Проверяем, есть ли уже такая роль
         stmt = select(Roles).where(Roles.user_id == user_id, Roles.role_id == role_id)
         result = await self.session.execute(stmt)
         if result.scalar_one_or_none():

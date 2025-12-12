@@ -28,28 +28,17 @@ class EventsRepo(BaseRepo):
         stmt = (
             select(Events)
             .options(
-                selectinload(Events.organizer_id), # Assuming relationship exists or we join manually
-                # Note: SQLAlchemy models in tables.py don't explicitly define relationships (relationship()),
-                # so we might need to join manually or assume they will be added.
-                # Given the constraints, I will use manual joins/queries if relationships are missing in ORM models.
-                # But wait, tables.py only has Columns. I cannot use selectinload without relationship properties.
-                # I will fetch related data manually or use joins.
+                selectinload(Events.organizer_id),
             )
             .where(Events.id == event_id)
         )
-        # Since tables.py doesn't have relationship(), I can't use selectinload easily.
-        # I will do a join to get organizer info.
-        
-        # Let's fetch event first
         event = await self.session.get(Events, event_id)
         if not event:
             return None
-            
-        # Fetch organizer
+
         organizer = await self.session.get(Users, event.organizer_id)
         organizer_dto = OrganizerRead.from_orm(organizer)
-        
-        # Fetch tags
+
         tags_stmt = (
             select(Tags)
             .join(EventTags, EventTags.tag_id == Tags.id)
@@ -57,8 +46,7 @@ class EventsRepo(BaseRepo):
         )
         tags_result = await self.session.execute(tags_stmt)
         tags_list = [TagRead.from_orm(t) for t in tags_result.scalars().all()]
-        
-        # Fetch skills
+
         skills_stmt = (
             select(Skills)
             .join(RequiredEventsSkills, RequiredEventsSkills.skill_id == Skills.id)
@@ -72,7 +60,7 @@ class EventsRepo(BaseRepo):
             organizer=organizer_dto,
             tags=tags_list,
             required_skills=skills_list,
-            applications_count=0, # Placeholder, service should populate or separate query
+            applications_count=0,
             approved_volunteers_count=await self._count_approved_volunteers(event_id)
         )
 
@@ -119,12 +107,9 @@ class EventsRepo(BaseRepo):
         update_data = event_in.model_dump(exclude_unset=True, exclude={"tag_ids", "skill_ids"})
         for key, value in update_data.items():
             setattr(event, key, value)
-            
-        # Update tags if provided
+
         if event_in.tag_ids is not None:
-            # Delete old
             await self.session.execute(delete(EventTags).where(EventTags.event_id == event_id))
-            # Insert new
             if event_in.tag_ids:
                 await self.session.execute(
                     insert(EventTags).values(
@@ -132,11 +117,8 @@ class EventsRepo(BaseRepo):
                     )
                 )
 
-        # Update skills if provided
         if event_in.skill_ids is not None:
-            # Delete old
             await self.session.execute(delete(RequiredEventsSkills).where(RequiredEventsSkills.event_id == event_id))
-            # Insert new
             if event_in.skill_ids:
                 await self.session.execute(
                     insert(RequiredEventsSkills).values(
@@ -161,8 +143,7 @@ class EventsRepo(BaseRepo):
     async def get_paginated_events(self, filters: EventFilters) -> EventListResponse:
         """Пагинированный поиск событий с фильтрами."""
         query = select(Events)
-        
-        # Filters
+
         if filters.location:
             query = query.where(Events.location.ilike(f"%{filters.location}%"))
         if filters.status:
@@ -173,33 +154,27 @@ class EventsRepo(BaseRepo):
             query = query.where(Events.start_date <= filters.start_date_to)
         if filters.organizer_id:
             query = query.where(Events.organizer_id == filters.organizer_id)
-            
-        # Join for tags filter
+
         if filters.tag_ids:
             query = query.join(EventTags).where(EventTags.tag_id.in_(filters.tag_ids)).distinct()
-            
-        # Join for skills filter
+
         if filters.skill_ids:
             query = query.join(RequiredEventsSkills).where(RequiredEventsSkills.skill_id.in_(filters.skill_ids)).distinct()
 
-        # Count total
         count_stmt = select(func.count()).select_from(query.subquery())
         total = await self.session.scalar(count_stmt) or 0
-        
-        # Pagination
+
         offset = (filters.page - 1) * filters.page_size
         query = query.limit(filters.page_size).offset(offset)
         
         result = await self.session.execute(query)
         events_orm = result.scalars().all()
-        
-        # Populate List Items (needs organizer info)
+
         events_list = []
         for event in events_orm:
             organizer = await self.session.get(Users, event.organizer_id)
             organizer_dto = OrganizerRead.from_orm(organizer)
-            
-            # Fetch tags for list item (optimization: could be done with eager load if relationships existed)
+
             tags_stmt = (
                 select(Tags)
                 .join(EventTags, EventTags.tag_id == Tags.id)
@@ -227,14 +202,12 @@ class EventsRepo(BaseRepo):
         stmt = select(Events).where(Events.organizer_id == organizer_id).order_by(Events.start_date.desc())
         result = await self.session.execute(stmt)
         events_orm = result.scalars().all()
-        
-        # Pre-fetch organizer info (it's the same for all events)
+
         organizer = await self.session.get(Users, organizer_id)
         organizer_dto = OrganizerRead.from_orm(organizer) if organizer else None
         
         events_list = []
         for event in events_orm:
-             # Fetch tags for list item
             tags_stmt = (
                 select(Tags)
                 .join(EventTags, EventTags.tag_id == Tags.id)

@@ -40,19 +40,15 @@ class NotificationsRepo(BaseRepo):
             query = query.where(Notifications.is_read == filters.is_read)
         if filters.type:
             query = query.where(Notifications.type == filters.type)
-            
-        # Order by created_at desc
+
         query = query.order_by(Notifications.created_at.desc())
 
-        # Count total
         count_stmt = select(func.count()).select_from(query.subquery())
         total = await self.session.scalar(count_stmt) or 0
-        
-        # Count unread (global for user)
+
         unread_stmt = select(func.count()).where(Notifications.user_id == user_id, Notifications.is_read == False)
         unread_count = await self.session.scalar(unread_stmt) or 0
 
-        # Pagination
         offset = (filters.page - 1) * filters.page_size
         query = query.limit(filters.page_size).offset(offset)
 
